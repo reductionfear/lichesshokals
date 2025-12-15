@@ -70,8 +70,6 @@
   }
 
   const namespace = 'lichesshook';
-  // Note: SQUARE_SIZE is no longer used as we calculate it dynamically from the board's actual dimensions
-  // const SQUARE_SIZE = 68;
 
   window[namespace] = {};
 
@@ -541,13 +539,20 @@
     return board?.classList.contains('orientation-black');
   }
 
+  const getSquareSize = () => {
+    const boardElement = getBoardElement();
+    if (!boardElement) return null;
+    const rect = boardElement.getBoundingClientRect();
+    return rect.width / 8;  // Dynamic calculation based on actual board size
+  }
+
   // Calculate pixel position for a square on Lichess board
   const calculateSquarePosition = (square) => {
     const boardElement = getBoardElement();
     if (!boardElement) return null;
 
     const rect = boardElement.getBoundingClientRect();
-    const squareSize = rect.width / 8;  // Dynamic calculation based on actual board size
+    const squareSize = getSquareSize();
     const [file, rank] = coordToFileRank(square);
 
     const flipped = isFlipped();
@@ -580,11 +585,8 @@
     const pieces = document.querySelectorAll('.main-board piece');
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
-    const boardElement = getBoardElement();
-    if (!boardElement) return null;
-
-    const rect = boardElement.getBoundingClientRect();
-    const squareSize = rect.width / 8;  // Dynamic calculation
+    const squareSize = getSquareSize();
+    if (!squareSize) return null;
 
     pieces.forEach(piece => {
       const transform = piece.style.transform;
@@ -820,7 +822,7 @@
       // Handle promotion
       if (promotion) {
         setTimeout(() => {
-          // Lichess shows promotion dialog with piece squares
+          // Lichess shows promotion dialog with piece squares in order: queen, knight, rook, bishop
           const promoSquares = document.querySelectorAll('square.promotion');
           const promoMap = { 'q': 0, 'n': 1, 'r': 2, 'b': 3 };
           const promoIndex = promoMap[promotion.toLowerCase()];
