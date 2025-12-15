@@ -70,6 +70,7 @@
   }
 
   const namespace = 'lichesshook';
+  const SQUARE_SIZE = 68; // Lichess board square size in pixels (544px / 8)
 
   window[namespace] = {};
 
@@ -107,7 +108,7 @@
       self.ws.onmessage = (e) => {
         const data = e.data;
         if (data.startsWith('iam ')) {
-          response = data.substring(4);
+          const response = data.substring(4);
           self.intermediaryVersionString = response;
           self.postMessage({ type: 'MESSAGE', payload: 'Connected to engine intermediary version ' + response });
           let parts = response.split('v');
@@ -514,18 +515,17 @@
     if (!boardElement) return null;
 
     const rect = boardElement.getBoundingClientRect();
-    const squareSize = 68; // Lichess uses 68px per square (544px / 8)
     const [file, rank] = coordToFileRank(square);
 
     const flipped = isFlipped();
     
     let x, y;
     if (flipped) {
-      x = rect.left + (7 - file) * squareSize + squareSize / 2;
-      y = rect.top + rank * squareSize + squareSize / 2;
+      x = rect.left + (7 - file) * SQUARE_SIZE + SQUARE_SIZE / 2;
+      y = rect.top + rank * SQUARE_SIZE + SQUARE_SIZE / 2;
     } else {
-      x = rect.left + file * squareSize + squareSize / 2;
-      y = rect.top + (7 - rank) * squareSize + squareSize / 2;
+      x = rect.left + file * SQUARE_SIZE + SQUARE_SIZE / 2;
+      y = rect.top + (7 - rank) * SQUARE_SIZE + SQUARE_SIZE / 2;
     }
 
     return { x, y };
@@ -557,8 +557,8 @@
       const x = parseInt(match[1]);
       const y = parseInt(match[2]);
       
-      const file = Math.floor(x / 68);
-      const rank = 7 - Math.floor(y / 68);
+      const file = Math.floor(x / SQUARE_SIZE);
+      const rank = 7 - Math.floor(y / SQUARE_SIZE);
 
       const classes = piece.className.split(' ');
       const color = classes.includes('white') ? 'w' : 'b';
@@ -597,9 +597,9 @@
       if (rank > 0) fen += '/';
     }
 
-    // Add default turn and castling info (we'll need to improve this)
-    const turnElement = document.querySelector('.rclock-turn');
-    const turn = turnElement ? 'w' : 'b'; // This is a simplification
+    // Add default turn and castling info (simplified - may not be accurate)
+    // In a real implementation, this should be extracted from the game state
+    const turn = 'w'; // Default to white's turn - this is a limitation
     
     return fen + ` ${turn} KQkq - 0 1`;
   }

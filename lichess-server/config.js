@@ -1,6 +1,8 @@
 // Configuration for Lichess server
 module.exports = {
   // Lichess API token with board:play scope
+  // NOTE: This token is hardcoded per project requirements for demonstration purposes
+  // For production use, store tokens in environment variables or separate config files
   lichessToken: 'lip_r6YAshuTBnVNenH4JQw7',
   
   // WebSocket server configuration

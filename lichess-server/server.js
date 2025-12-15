@@ -437,7 +437,7 @@ async function main() {
   wsServer.start();
 
   log.info('Server is ready!');
-  log.info('Connect your userscript to: ws://localhost:8081');
+  log.info(`Connect your userscript to: ws://${config.wsHost}:${config.wsPort}`);
 
   // Handle shutdown
   process.on('SIGINT', () => {
