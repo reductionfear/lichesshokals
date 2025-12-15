@@ -1,0 +1,25 @@
+{
+  "name": "lichess-server",
+  "version": "1.0.0",
+  "description": "Node.js server for Lichess Board API integration with UCI engine support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "lichess",
+    "chess",
+    "uci",
+    "engine",
+    "websocket"
+  ],
+  "author": "0mlml",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

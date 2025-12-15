@@ -1,4 +1,26 @@
-# Chesshook intermediary
+# Lichesshokals
+
+Chess analysis tools for both Chess.com and Lichess.org, featuring userscripts and intermediary servers for engine integration.
+
+## What's Included
+
+- **Chesshook** (`chesshook.user.js`) - Userscript for Chess.com
+- **Lichesshook** (`lichesshook.user.js`) - Userscript for Lichess.org
+- **Go Intermediary** (`main.go`) - Go-based server for Chess.com
+- **Lichess Server** (`lichess-server/`) - Node.js server for Lichess Board API
+- **Betafish Engine** (`betafish.js`) - Shared JavaScript chess engine
+
+## Quick Start
+
+### For Lichess.org
+See **[LICHESS.md](LICHESS.md)** for complete installation and usage guide.
+
+### For Chess.com
+See the sections below for the Go intermediary server setup.
+
+---
+
+# Chesshook Intermediary (Chess.com)
 
 A simple server to run a chess engine and communicate with the chesshook userscript. Generates a random passkey on startup. The passkey is used to authenticate the userscript, and is printed to the console on startup. The server has hardcoded values whether the key is required for read or write access. By default the key is required for write access, but not for read access.
 
