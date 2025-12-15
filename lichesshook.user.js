@@ -4,7 +4,7 @@
 // @grant       none
 // @require     https://raw.githubusercontent.com/0mlml/chesshook/master/betafish.js
 // @require     https://raw.githubusercontent.com/0mlml/vasara/main/vasara.js
-// @version     1.0
+// @version     1.1
 // @author      0mlml
 // @description Lichess.org Cheat Userscript
 // @updateURL   https://raw.githubusercontent.com/reductionfear/lichesshokals/master/lichesshook.user.js
@@ -247,23 +247,27 @@
     let thinkingTime = 1000;
     let fen = null;
 
-    self.importScripts('https://raw.githubusercontent.com/0mlml/chesshook/master/betafish.js');
+    // betafishEngine is now available from the blob itself
     const engine = betafishEngine();
 
     self.addEventListener('message', e => {
       if (e.data.type === 'FEN') {
         fen = e.data.payload;
+        engine.setFEN(fen);
       } else if (e.data.type === 'GETMOVE') {
         if (!fen) return self.postMessage({ type: 'ERROR', payload: 'No FEN set' });
-        const bestMove = engine.getBestMove(fen, thinkingTime);
-        self.postMessage({ type: 'BESTMOVE', payload: bestMove });
+        self.postMessage({ type: 'MESSAGE', payload: 'Calculating best move...' });
+        const move = engine.getBestMove();
+        self.postMessage({ type: 'BESTMOVE', payload: move });
       } else if (e.data.type === 'THINKINGTIME') {
         thinkingTime = e.data.payload;
+        engine.setThinkingTime(thinkingTime / 1000);
       }
     });
   };
 
-  const betafishWorkerBlob = new Blob([`(${betafishWorkerFunc.toString()})();`], { type: 'application/javascript' });
+  // Include betafishEngine in the blob so it's available inside the worker
+  const betafishWorkerBlob = new Blob([`const betafishEngine=${betafishEngine.toString()};(${betafishWorkerFunc.toString()})();`], { type: 'application/javascript' });
   const betafishWorkerURL = URL.createObjectURL(betafishWorkerBlob);
   const betafishWorker = new Worker(betafishWorkerURL);
 
@@ -273,6 +277,8 @@
       handleEngineMove(e.data.payload);
     } else if (e.data.type === 'ERROR') {
       addToConsole('ERROR: ' + e.data.payload);
+    } else if (e.data.type === 'MESSAGE') {
+      addToConsole(e.data.payload);
     }
   };
 
