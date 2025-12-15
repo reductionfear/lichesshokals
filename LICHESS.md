@@ -123,7 +123,8 @@ Press `Alt+K` to open the configuration window. Available options:
 - **Betafish Thinking Time**: Time in milliseconds for betafish to analyze (default: 1000ms)
 
 ##### External Engine Settings (when engine = external)
-- **External Engine URL**: WebSocket URL of the server (default: `ws://localhost:8081`)
+- **External Engine URL**: WebSocket URL of the server (default: `ws://localhost:8081` - Lichess server)
+  - Note: The Go intermediary server uses port 8080, Lichess server uses 8081
 - **External Engine Go Command**: UCI go command (default: `go movetime 1000`)
 - **External Engine Passkey**: Authentication passkey (if required)
 

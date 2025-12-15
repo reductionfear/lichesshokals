@@ -70,7 +70,9 @@
   }
 
   const namespace = 'lichesshook';
-  const SQUARE_SIZE = 68; // Lichess board square size in pixels (544px / 8)
+  // Lichess board square size in pixels (544px / 8)
+  // Note: This assumes standard Lichess board size. May need adjustment if Lichess changes board sizing
+  const SQUARE_SIZE = 68;
 
   window[namespace] = {};
 
@@ -399,7 +401,7 @@
       type: 'text',
       display: 'External Engine URL: ',
       description: 'The URL of the external engine',
-      value: 'ws://localhost:8080/ws',
+      value: 'ws://localhost:8081',
       showOnlyIf: () => vs.queryConfigKey(namespace + '_whichengine') === 'external',
       callback: v => externalEngineWorker.postMessage({ type: 'INIT', payload: v })
     });
