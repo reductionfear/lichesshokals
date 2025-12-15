@@ -4,7 +4,7 @@
 // @grant       none
 // @require     https://raw.githubusercontent.com/0mlml/chesshook/master/betafish.js
 // @require     https://raw.githubusercontent.com/0mlml/vasara/main/vasara.js
-// @version     1.2
+// @version     1.3
 // @author      0mlml
 // @description Lichess.org Cheat Userscript
 // @updateURL   https://raw.githubusercontent.com/reductionfear/lichesshokals/master/lichesshook.user.js
@@ -70,9 +70,6 @@
   }
 
   const namespace = 'lichesshook';
-  // Lichess board square size in pixels (544px / 8)
-  // Note: This assumes standard Lichess board size. May need adjustment if Lichess changes board sizing
-  const SQUARE_SIZE = 68;
 
   window[namespace] = {};
 
@@ -542,23 +539,31 @@
     return board?.classList.contains('orientation-black');
   }
 
+  const getSquareSize = () => {
+    const boardElement = getBoardElement();
+    if (!boardElement) return null;
+    const rect = boardElement.getBoundingClientRect();
+    return rect.width / 8;  // Dynamic calculation based on actual board size
+  }
+
   // Calculate pixel position for a square on Lichess board
   const calculateSquarePosition = (square) => {
     const boardElement = getBoardElement();
     if (!boardElement) return null;
 
     const rect = boardElement.getBoundingClientRect();
+    const squareSize = getSquareSize();
     const [file, rank] = coordToFileRank(square);
 
     const flipped = isFlipped();
     
     let x, y;
     if (flipped) {
-      x = rect.left + (7 - file) * SQUARE_SIZE + SQUARE_SIZE / 2;
-      y = rect.top + rank * SQUARE_SIZE + SQUARE_SIZE / 2;
+      x = rect.left + (7 - file) * squareSize + squareSize / 2;
+      y = rect.top + rank * squareSize + squareSize / 2;
     } else {
-      x = rect.left + file * SQUARE_SIZE + SQUARE_SIZE / 2;
-      y = rect.top + (7 - rank) * SQUARE_SIZE + SQUARE_SIZE / 2;
+      x = rect.left + file * squareSize + squareSize / 2;
+      y = rect.top + (7 - rank) * squareSize + squareSize / 2;
     }
 
     return { x, y };
@@ -580,6 +585,9 @@
     const pieces = document.querySelectorAll('.main-board piece');
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
+    const squareSize = getSquareSize();
+    if (!squareSize) return null;
+
     pieces.forEach(piece => {
       const transform = piece.style.transform;
       if (!transform) return;
@@ -590,8 +598,8 @@
       const x = parseInt(match[1]);
       const y = parseInt(match[2]);
       
-      const file = Math.floor(x / SQUARE_SIZE);
-      const rank = 7 - Math.floor(y / SQUARE_SIZE);
+      const file = Math.floor(x / squareSize);
+      const rank = 7 - Math.floor(y / squareSize);
 
       const classes = piece.className.split(' ');
       const color = classes.includes('white') ? 'w' : 'b';
@@ -775,36 +783,51 @@
     const fromPos = calculateSquarePosition(from);
     const toPos = calculateSquarePosition(to);
 
-    if (!fromPos || !toPos) return;
+    if (!fromPos || !toPos) {
+      addToConsole('Error: Could not calculate square positions');
+      return;
+    }
 
-    const boardElement = getBoardElement();
-    if (!boardElement) return;
+    // Target cg-container for events (not cg-board)
+    const boardContainer = document.querySelector('.main-board cg-container');
+    if (!boardContainer) {
+      addToConsole('Error: Could not find board container');
+      return;
+    }
 
-    // Simulate pointer events
-    boardElement.dispatchEvent(new PointerEvent('pointerdown', {
+    addToConsole(`Making move: ${from} -> ${to}`);
+
+    // Add pointerId and isPrimary for proper Lichess event handling
+    boardContainer.dispatchEvent(new PointerEvent('pointerdown', {
       bubbles: true,
       cancelable: true,
       view: window,
       clientX: fromPos.x,
       clientY: fromPos.y,
+      pointerId: 1,
+      isPrimary: true,
     }));
 
     setTimeout(() => {
-      boardElement.dispatchEvent(new PointerEvent('pointerup', {
+      boardContainer.dispatchEvent(new PointerEvent('pointerup', {
         bubbles: true,
         cancelable: true,
         view: window,
         clientX: toPos.x,
         clientY: toPos.y,
+        pointerId: 1,
+        isPrimary: true,
       }));
 
       // Handle promotion
       if (promotion) {
         setTimeout(() => {
-          const promoSquare = document.querySelector(`[data-square="${to}"]`);
-          const promoButton = promoSquare?.querySelector(`[data-role="${promotion}"]`);
-          if (promoButton) {
-            promoButton.click();
+          // Lichess shows promotion dialog with piece squares in order: queen, knight, rook, bishop
+          const promoSquares = document.querySelectorAll('square.promotion');
+          const promoMap = { 'q': 0, 'n': 1, 'r': 2, 'b': 3 };
+          const promoIndex = promoMap[promotion.toLowerCase()];
+          if (promoSquares[promoIndex]) {
+            promoSquares[promoIndex].click();
           }
         }, 100);
       }
