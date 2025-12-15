@@ -4,7 +4,7 @@
 // @grant       none
 // @require     https://raw.githubusercontent.com/0mlml/chesshook/master/betafish.js
 // @require     https://raw.githubusercontent.com/0mlml/vasara/main/vasara.js
-// @version     1.1
+// @version     1.2
 // @author      0mlml
 // @description Lichess.org Cheat Userscript
 // @updateURL   https://raw.githubusercontent.com/reductionfear/lichesshokals/master/lichesshook.user.js
@@ -244,24 +244,35 @@
   };
 
   const betafishWorkerFunc = function () {
-    let thinkingTime = 1000;
-    let fen = null;
+    self.instance = betafishEngine();
+    self.thinking = false;
 
-    // betafishEngine is now available from the blob itself
-    const engine = betafishEngine();
+    const postError = (message) => self.postMessage({ type: 'ERROR', payload: message });
+    const isInstanceInitialized = () => self.instance || postError('Betafish not initialized.');
 
     self.addEventListener('message', e => {
-      if (e.data.type === 'FEN') {
-        fen = e.data.payload;
-        engine.setFEN(fen);
-      } else if (e.data.type === 'GETMOVE') {
-        if (!fen) return self.postMessage({ type: 'ERROR', payload: 'No FEN set' });
-        self.postMessage({ type: 'MESSAGE', payload: 'Calculating best move...' });
-        const move = engine.getBestMove();
-        self.postMessage({ type: 'BESTMOVE', payload: move });
-      } else if (e.data.type === 'THINKINGTIME') {
-        thinkingTime = e.data.payload;
-        engine.setThinkingTime(thinkingTime / 1000);
+      if (!isInstanceInitialized()) return;
+
+      switch (e.data.type) {
+        case 'FEN':
+          if (!e.data.payload) return postError('No FEN provided.');
+          self.instance.setFEN(e.data.payload);
+          break;
+        case 'GETMOVE':
+          if (self.thinking) return postError('Betafish is already calculating.');
+          self.postMessage({ type: 'MESSAGE', payload: 'Betafish received request for best move. Calculating...' });
+          self.thinking = true;
+          const move = self.instance.getBestMove();
+          self.thinking = false;
+          self.postMessage({ type: 'MOVE', payload: { move, toMove: self.instance.getFEN().split(' ')[1] } });
+          break;
+        case 'THINKINGTIME':
+          if (isNaN(e.data.payload)) return postError('Invalid thinking time provided.');
+          self.instance.setThinkingTime(e.data.payload / 1000);
+          self.postMessage({ type: 'DEBUG', payload: `Betafish thinking time set to ${e.data.payload}ms.` });
+          break;
+        default:
+          postError('Invalid message type.');
       }
     });
   };
@@ -271,14 +282,28 @@
   const betafishWorkerURL = URL.createObjectURL(betafishWorkerBlob);
   const betafishWorker = new Worker(betafishWorkerURL);
 
+  const betafishPieces = { EMPTY: 0, wP: 1, wN: 2, wB: 3, wR: 4, wQ: 5, wK: 6, bP: 7, bN: 8, bB: 9, bR: 10, bQ: 11, bK: 12 };
+
   betafishWorker.onmessage = (e) => {
-    if (e.data.type === 'BESTMOVE') {
-      addToConsole('Betafish computed move: ' + e.data.payload);
-      handleEngineMove(e.data.payload);
-    } else if (e.data.type === 'ERROR') {
-      addToConsole('ERROR: ' + e.data.payload);
-    } else if (e.data.type === 'MESSAGE') {
-      addToConsole(e.data.payload);
+    switch (e.data.type) {
+      case 'DEBUG':
+      case 'MESSAGE':
+        addToConsole(e.data.payload);
+        break;
+      case 'ERROR':
+        addToConsole('ERROR: ' + e.data.payload);
+        break;
+      case 'MOVE':
+        const { move, toMove } = e.data.payload;
+        const squareToRankFile = sq => [Math.floor((sq - 21) / 10), sq - 21 - Math.floor((sq - 21) / 10) * 10];
+        const from = squareToRankFile(move & 0x7f);
+        const to = squareToRankFile((move >> 7) & 0x7f);
+        const promoted = (move >> 20) & 0xf;
+        const promotedString = promoted !== 0 ? Object.entries(betafishPieces).find(([key, value]) => value === promoted)?.[0].toLowerCase()[1] || '' : '';
+        const uciMove = coordsToUCIMoveString(from, to, promotedString);
+        addToConsole(`Betafish computed best for ${toMove === 'w' ? 'white' : 'black'}: ${uciMove}`);
+        handleEngineMove(uciMove);
+        break;
     }
   };
 
@@ -676,6 +701,17 @@
   const resolveAfterMs = (ms = 1000) => {
     if (ms <= 0) return new Promise(res => res());
     return new Promise(res => setTimeout(res, ms));
+  }
+
+  const xyToCoordInverted = (x, y) => {
+    const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const file = letters[y];
+    const rank = x + 1;
+    return file + rank;
+  }
+
+  const coordsToUCIMoveString = (from, to, promotion) => {
+    return xyToCoordInverted(from[0], from[1]) + xyToCoordInverted(to[0], to[1]) + promotion;
   }
 
   const handleEngineMove = (uciMove) => {
